@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blinkit — Business Decision Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0d; --bg2: #111318; --bg3: #181c22;
+    --card: #1a1f29; --card2: #1f2633; --border: #2a3040;
+    --green: #00e676; --green2: #69f0ae; --yellow: #ffd600;
+    --red: #ff5252; --blue: #40c4ff; --purple: #d500f9;
+    --orange: #ff9100; --text: #e8ecf4; --text2: #8a93a8; --text3: #5a6270;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+  .header { display:flex; align-items:center; justify-content:space-between; padding:18px 32px; background:var(--bg2); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-dot { width:36px; height:36px; background:var(--green); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#000; }
+  .logo-text { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+  .logo-sub { font-size:11px; color:var(--text2); font-family:'Space Mono',monospace; letter-spacing:1px; }
+  .header-right { display:flex; align-items:center; gap:20px; }
+  .live-badge { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--green); font-family:'Space Mono',monospace; }
+  .live-dot { width:8px; height:8px; background:var(--green); border-radius:50%; animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+  .header-date { font-size:12px; color:var(--text2); font-family:'Space Mono',monospace; }
+
+  .nav { display:flex; gap:0; padding:0 32px; background:var(--bg2); border-bottom:1px solid var(--border); overflow-x:auto; }
+  .nav-btn { padding:14px 22px; background:none; border:none; color:var(--text2); font-family:'Syne',sans-serif; font-size:13px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap; display:flex; align-items:center; gap:8px; }
+  .nav-btn:hover { color:var(--text); }
+  .nav-btn.active { color:var(--green); border-bottom-color:var(--green); }
+
+  .page { display:none; padding:28px 32px; }
+  .page.active { display:block; }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .kpi-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; position:relative; overflow:hidden; transition:transform 0.2s,border-color 0.2s; }
+  .kpi-card:hover { transform:translateY(-2px); border-color:#3a4255; }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent,var(--green)); }
+  .kpi-label { font-size:11px; color:var(--text2); font-family:'Space Mono',monospace; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
+  .kpi-value { font-size:28px; font-weight:800; line-height:1; margin-bottom:6px; }
+  .kpi-sub { font-size:12px; color:var(--text3); }
+  .kpi-badge { display:inline-block; padding:3px 8px; border-radius:20px; font-size:10px; font-weight:700; font-family:'Space Mono',monospace; }
+  .badge-green { background:rgba(0,230,118,0.15); color:var(--green); }
+  .badge-red { background:rgba(255,82,82,0.15); color:var(--red); }
+  .badge-yellow { background:rgba(255,214,0,0.15); color:var(--yellow); }
+
+  .chart-grid { display:grid; gap:20px; }
+  .chart-grid-2 { grid-template-columns:1fr 1fr; }
+  .chart-grid-3 { grid-template-columns:2fr 1fr; }
+  .chart-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:22px; }
+  .chart-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .chart-sub { font-size:11px; color:var(--text2); font-family:'Space Mono',monospace; margin-bottom:18px; }
+  canvas { max-height:280px; }
+
+  .alert-bar { display:flex; align-items:center; gap:12px; background:rgba(255,82,82,0.1); border:1px solid rgba(255,82,82,0.3); border-radius:8px; padding:12px 18px; margin-bottom:20px; font-size:13px; }
+  .info-bar { display:flex; align-items:center; gap:12px; background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.2); border-radius:8px; padding:12px 18px; margin-bottom:20px; font-size:13px; color:var(--text2); }
+  .info-bar strong { color:var(--green); }
+
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th { text-align:left; padding:10px 14px; color:var(--text2); font-size:11px; font-family:'Space Mono',monospace; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+  .data-table td { padding:11px 14px; border-bottom:1px solid rgba(42,48,64,0.5); }
+  .data-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+  .risk-calc { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-top:20px; }
+  .risk-form { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:14px; align-items:end; margin-top:16px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-label { font-size:11px; color:var(--text2); font-family:'Space Mono',monospace; }
+  .form-select, .form-input { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:8px; font-family:'Syne',sans-serif; font-size:13px; outline:none; transition:border-color 0.2s; }
+  .form-select:focus, .form-input:focus { border-color:var(--green); }
+  .form-select option { background:var(--bg3); }
+  .calc-btn { background:var(--green); color:#000; border:none; padding:10px 22px; border-radius:8px; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .calc-btn:hover { background:var(--green2); }
+  .risk-result { margin-top:20px; display:none; }
+  .risk-meter { display:flex; align-items:center; gap:20px; background:var(--bg3); border-radius:10px; padding:20px 24px; }
+  .risk-circle { width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; flex-shrink:0; }
+  .risk-low { background:rgba(0,230,118,0.15); border:3px solid var(--green); color:var(--green); }
+  .risk-med { background:rgba(255,214,0,0.15); border:3px solid var(--yellow); color:var(--yellow); }
+  .risk-high { background:rgba(255,82,82,0.15); border:3px solid var(--red); color:var(--red); }
+  .risk-info h3 { font-size:16px; margin-bottom:6px; }
+  .risk-info p { font-size:13px; color:var(--text2); }
+
+  .feedback-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .sent-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .sent-label { width:70px; font-size:13px; font-weight:600; }
+  .sent-bar-bg { flex:1; height:10px; background:var(--bg3); border-radius:5px; overflow:hidden; }
+  .sent-bar-fill { height:100%; border-radius:5px; transition:width 1s ease; }
+  .sent-pct { width:40px; font-size:12px; font-family:'Space Mono',monospace; text-align:right; }
+  .star-row { display:flex; gap:4px; align-items:center; margin-bottom:8px; }
+  .star-bar-bg { flex:1; height:8px; background:var(--bg3); border-radius:4px; overflow:hidden; }
+  .star-bar-fill { height:100%; background:var(--yellow); border-radius:4px; }
+  .star-count { font-size:11px; color:var(--text2); width:50px; font-family:'Space Mono',monospace; }
+
+  /* ── AI CHAT ── */
+  .chat-container { max-width:860px; }
+  .rag-banner { background:rgba(0,230,118,0.06); border:1px solid rgba(0,230,118,0.2); border-radius:10px; padding:16px 20px; margin-bottom:18px; font-size:13px; }
+  .rag-banner strong { color:var(--green); }
+  .rag-pipeline { display:flex; align-items:center; gap:0; flex-wrap:wrap; margin-top:10px; }
+  .rag-step { background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:11px; font-family:'Space Mono',monospace; color:var(--text2); white-space:nowrap; }
+  .rag-step.active-step { border-color:var(--green); color:var(--green); }
+  .rag-arrow { color:var(--border); padding:0 6px; font-size:16px; }
+
+  .groq-key-row { display:flex; gap:10px; align-items:center; margin-bottom:16px; }
+  .groq-key-input { flex:1; background:var(--card); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:8px; font-family:'Space Mono',monospace; font-size:12px; outline:none; }
+  .groq-key-input:focus { border-color:var(--green); }
+  .groq-key-btn { background:var(--green); color:#000; border:none; padding:10px 18px; border-radius:8px; font-family:'Syne',sans-serif; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .groq-key-btn:hover { background:var(--green2); }
+
+  .chat-box { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); min-height:380px; max-height:480px; overflow-y:auto; padding:20px; margin-bottom:16px; display:flex; flex-direction:column; gap:14px; }
+  .chat-msg { display:flex; gap:12px; align-items:flex-start; }
+  .chat-msg.user { flex-direction:row-reverse; }
+  .msg-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; flex-shrink:0; }
+  .avatar-ai { background:rgba(0,230,118,0.2); color:var(--green); }
+  .avatar-user { background:rgba(64,196,255,0.2); color:var(--blue); }
+  .msg-bubble { background:var(--bg3); border-radius:10px; padding:12px 16px; font-size:13px; line-height:1.6; max-width:85%; border:1px solid var(--border); }
+  .chat-msg.user .msg-bubble { background:rgba(64,196,255,0.08); border-color:rgba(64,196,255,0.2); }
+
+  .retrieved-box { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:10px; font-size:12px; }
+  .retrieved-title { font-size:11px; font-family:'Space Mono',monospace; color:var(--text2); margin-bottom:8px; letter-spacing:0.5px; }
+  .retrieved-chip { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-family:'Space Mono',monospace; margin:3px 3px 3px 0; }
+
+  .chat-input-row { display:flex; gap:10px; }
+  .chat-input { flex:1; background:var(--card); border:1px solid var(--border); color:var(--text); padding:12px 16px; border-radius:8px; font-family:'Syne',sans-serif; font-size:13px; outline:none; }
+  .chat-input:focus { border-color:var(--green); }
+  .chat-send { background:var(--green); color:#000; border:none; padding:12px 22px; border-radius:8px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; font-size:13px; }
+  .chat-send:hover { background:var(--green2); }
+  .chat-send:disabled { background:var(--bg3); color:var(--text3); cursor:not-allowed; }
+  .suggestions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .sugg-btn { background:var(--bg3); border:1px solid var(--border); color:var(--text2); padding:7px 14px; border-radius:20px; font-size:12px; cursor:pointer; transition:all 0.2s; font-family:'Syne',sans-serif; }
+  .sugg-btn:hover { border-color:var(--green); color:var(--green); }
+  .typing { display:flex; gap:5px; align-items:center; padding:8px 0; }
+  .typing span { width:6px; height:6px; background:var(--green); border-radius:50%; animation:bounce 1s infinite; }
+  .typing span:nth-child(2) { animation-delay:0.15s; }
+  .typing span:nth-child(3) { animation-delay:0.3s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-8px)} }
+
+  .section-header { margin-bottom:20px; }
+  .section-title { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+  .section-desc { font-size:13px; color:var(--text2); margin-top:4px; }
+
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg2); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  @media (max-width:1100px) {
+    .kpi-grid { grid-template-columns:repeat(2,1fr); }
+    .chart-grid-2,.chart-grid-3,.feedback-grid { grid-template-columns:1fr; }
+    .risk-form { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width:600px) {
+    .page { padding:16px; } .header { padding:14px 16px; } .nav { padding:0 8px; }
+    .kpi-grid { grid-template-columns:1fr 1fr; }
+  }
+  .fade-in { animation:fadeUp 0.4s ease forwards; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-dot">⚡</div>
+    <div>
+      <div class="logo-text">Blinkit Intelligence</div>
+      <div class="logo-sub">BUSINESS DECISION PLATFORM</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div> LIVE DATA</div>
+    <div class="header-date" id="headerDate"></div>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('overview')" data-page="overview">📊 Overview</button>
+  <button class="nav-btn" onclick="showPage('marketing')" data-page="marketing">📈 Marketing ROI</button>
+  <button class="nav-btn" onclick="showPage('operations')" data-page="operations">🚚 Operations</button>
+  <button class="nav-btn" onclick="showPage('products')" data-page="products">📦 Products</button>
+  <button class="nav-btn" onclick="showPage('feedback')" data-page="feedback">💬 Feedback</button>
+  <button class="nav-btn" onclick="showPage('ai')" data-page="ai">🤖 AI Assistant (RAG)</button>
+</nav>
+
+<!-- OVERVIEW -->
+<div class="page active fade-in" id="page-overview">
+  <div class="section-header">
+    <div class="section-title">Business Overview</div>
+    <div class="section-desc">Unified intelligence across Marketing, Operations & Customer Experience</div>
+  </div>
+  <div class="alert-bar">
+    ⚠️ <span><strong>Marketing Alert:</strong> Overall ROAS is <strong style="color:var(--red)">0.67x</strong> — below the 2.0x profitable threshold. Spend is exceeding revenue. Immediate campaign review recommended.</span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--accent:var(--green)"><div class="kpi-label">Total Revenue</div><div class="kpi-value" style="color:var(--green)">₹1.10Cr</div><div class="kpi-sub">Mar 2023 – Nov 2024</div></div>
+    <div class="kpi-card" style="--accent:var(--red)"><div class="kpi-label">Total Ad Spend</div><div class="kpi-value" style="color:var(--red)">₹1.63Cr</div><div class="kpi-sub"><span class="kpi-badge badge-red">ROAS: 0.67x</span></div></div>
+    <div class="kpi-card" style="--accent:var(--blue)"><div class="kpi-label">Total Orders</div><div class="kpi-value" style="color:var(--blue)">5,000</div><div class="kpi-sub">Avg ₹2,202 per order</div></div>
+    <div class="kpi-card" style="--accent:var(--yellow)"><div class="kpi-label">On-Time Delivery</div><div class="kpi-value" style="color:var(--yellow)">69.4%</div><div class="kpi-sub"><span class="kpi-badge badge-yellow">1,530 delayed</span></div></div>
+    <div class="kpi-card" style="--accent:var(--purple)"><div class="kpi-label">Total Customers</div><div class="kpi-value" style="color:var(--purple)">2,500</div><div class="kpi-sub">24% Inactive segment</div></div>
+    <div class="kpi-card" style="--accent:var(--orange)"><div class="kpi-label">Avg Customer Rating</div><div class="kpi-value" style="color:var(--orange)">3.34⭐</div><div class="kpi-sub">32.8% negative feedback</div></div>
+    <div class="kpi-card" style="--accent:var(--green2)"><div class="kpi-label">Total Impressions</div><div class="kpi-value" style="color:var(--green2)">29.5M</div><div class="kpi-sub">Across all campaigns</div></div>
+    <div class="kpi-card" style="--accent:var(--blue)"><div class="kpi-label">Best Channel ROAS</div><div class="kpi-value" style="color:var(--blue)">2.05x</div><div class="kpi-sub"><span class="kpi-badge badge-green">Email — Only profitable</span></div></div>
+  </div>
+  <div class="chart-grid chart-grid-3">
+    <div class="chart-card"><div class="chart-title">Monthly Revenue vs Ad Spend</div><div class="chart-sub">FINANCIAL PERFORMANCE TREND</div><canvas id="monthlyChart"></canvas></div>
+    <div class="chart-card"><div class="chart-title">Customer Segments</div><div class="chart-sub">DISTRIBUTION BREAKDOWN</div><canvas id="segmentChart"></canvas></div>
+  </div>
+</div>
+
+<!-- MARKETING -->
+<div class="page fade-in" id="page-marketing">
+  <div class="section-header">
+    <div class="section-title">Marketing ROI Dashboard</div>
+    <div class="section-desc">Return on Ad Spend (ROAS) — ROAS ≥ 2.0x = Profitable</div>
+  </div>
+  <!-- DATE FILTER -->
+  <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex-wrap:wrap;">
+    <span style="font-size:12px;color:var(--text2);font-family:'Space Mono',monospace;letter-spacing:1px">DATE RANGE</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:12px;color:var(--text2)">From</label>
+      <input type="date" id="dateFrom" value="2024-10-07" min="2023-03-16" max="2024-11-04"
+        style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-family:'Space Mono',monospace;font-size:12px;outline:none"
+        onchange="filterByDate()">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:12px;color:var(--text2)">To</label>
+      <input type="date" id="dateTo" value="2024-11-04" min="2023-03-16" max="2024-11-04"
+        style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-family:'Space Mono',monospace;font-size:12px;outline:none"
+        onchange="filterByDate()">
+    </div>
+    <div style="display:flex;gap:8px;margin-left:auto">
+      <button onclick="setDateRange(7)"   style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Space Mono',monospace">7D</button>
+      <button onclick="setDateRange(30)"  style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Space Mono',monospace">30D</button>
+      <button onclick="setDateRange(90)"  style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Space Mono',monospace">90D</button>
+      <button onclick="setDateRange(999)" style="background:var(--green);border:none;color:#000;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Space Mono',monospace;font-weight:700">ALL</button>
+    </div>
+  </div>
+  <div class="alert-bar">
+    🔴 <span><strong>ROAS Alert:</strong> Only <strong style="color:var(--red)">1 out of 600</strong> tracked days achieved profitable ROAS ≥ 2.0x. Total spend of <strong>₹1.63Cr</strong> generated only <strong>₹1.10Cr</strong> in attributed revenue.</span>
+  </div>
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-card" style="--accent:var(--red)"><div class="kpi-label">Overall ROAS</div><div class="kpi-value" id="mkt-roas" style="color:var(--red)">0.67x</div><div class="kpi-sub"><span class="kpi-badge badge-red">Below 2.0x target</span></div></div>
+    <div class="kpi-card" style="--accent:var(--green)"><div class="kpi-label">Revenue (Period)</div><div class="kpi-value" id="mkt-rev" style="color:var(--green)">—</div><div class="kpi-sub">Selected date range</div></div>
+    <div class="kpi-card" style="--accent:var(--blue)"><div class="kpi-label">Best Channel</div><div class="kpi-value" style="color:var(--blue)">2.05x</div><div class="kpi-sub">Email</div></div>
+    <div class="kpi-card" style="--accent:var(--yellow)"><div class="kpi-label">Profitable Days</div><div class="kpi-value" id="mkt-prof" style="color:var(--yellow)">—</div><div class="kpi-sub">ROAS ≥ 2.0x</div></div>
+  </div>
+  <div class="chart-grid chart-grid-2" style="margin-bottom:20px">
+    <div class="chart-card"><div class="chart-title">Daily Revenue vs Ad Spend</div><div class="chart-sub">DUAL-AXIS — RED BARS = SPEND | GREEN LINE = REVENUE</div><canvas id="roasChart"></canvas></div>
+    <div class="chart-card"><div class="chart-title">Channel ROAS Comparison</div><div class="chart-sub">PERFORMANCE BY MARKETING CHANNEL</div><canvas id="channelChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Campaign Performance Table</div>
+    <div class="chart-sub">SORTED BY ROAS — THRESHOLD AT 2.0x</div>
+    <table class="data-table" style="margin-top:10px">
+      <thead><tr><th>Campaign</th><th>Total Spend</th><th>Revenue Generated</th><th>ROAS</th><th>Visual</th><th>Status</th></tr></thead>
+      <tbody id="campaignTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- OPERATIONS -->
+<div class="page fade-in" id="page-operations">
+  <div class="section-header">
+    <div class="section-title">Operations & Delivery Intelligence</div>
+    <div class="section-desc">Delivery performance analytics and risk prediction</div>
+  </div>
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-card" style="--accent:var(--green)"><div class="kpi-label">On-Time Deliveries</div><div class="kpi-value" style="color:var(--green)">3,470</div><div class="kpi-sub">69.4% of all orders</div></div>
+    <div class="kpi-card" style="--accent:var(--yellow)"><div class="kpi-label">Slightly Delayed</div><div class="kpi-value" style="color:var(--yellow)">1,037</div><div class="kpi-sub">20.7% of all orders</div></div>
+    <div class="kpi-card" style="--accent:var(--red)"><div class="kpi-label">Significantly Delayed</div><div class="kpi-value" style="color:var(--red)">493</div><div class="kpi-sub">9.9% of all orders</div></div>
+    <div class="kpi-card" style="--accent:var(--blue)"><div class="kpi-label">Total Delayed</div><div class="kpi-value" style="color:var(--blue)">1,530</div><div class="kpi-sub">30.6% delay rate</div></div>
+  </div>
+  <div class="chart-grid chart-grid-2">
+    <div class="chart-card"><div class="chart-title">Delay Rate by Hour of Day</div><div class="chart-sub">% OF ORDERS DELAYED — RED = HIGH RISK HOURS</div><canvas id="delayHourChart"></canvas></div>
+    <div class="chart-card"><div class="chart-title">Delivery Status Distribution</div><div class="chart-sub">BREAKDOWN OF ALL 5,000 ORDERS</div><canvas id="deliveryPieChart"></canvas></div>
+  </div>
+  <div class="risk-calc">
+    <div class="chart-title">⚠️ Delivery Risk Calculator</div>
+    <div class="chart-sub">PREDICT DELAY RISK BEFORE DISPATCH</div>
+    <div class="risk-form">
+      <div class="form-group">
+        <label class="form-label">HOUR OF ORDER</label>
+        <select class="form-select" id="riskHour">
+          <option value="0">12 AM</option><option value="1">1 AM</option><option value="2">2 AM</option>
+          <option value="3">3 AM</option><option value="4">4 AM</option><option value="5">5 AM</option>
+          <option value="6">6 AM</option><option value="7">7 AM</option><option value="8">8 AM</option>
+          <option value="9">9 AM</option><option value="10">10 AM</option><option value="11">11 AM ⚠️</option>
+          <option value="12" selected>12 PM</option><option value="13">1 PM ⚠️</option><option value="14">2 PM</option>
+          <option value="15">3 PM</option><option value="16">4 PM</option><option value="17">5 PM</option>
+          <option value="18">6 PM</option><option value="19">7 PM</option><option value="20">8 PM</option>
+          <option value="21">9 PM</option><option value="22">10 PM ⚠️</option><option value="23">11 PM</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">DAY OF WEEK</label>
+        <select class="form-select" id="riskDay">
+          <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
+          <option value="3" selected>Thursday</option><option value="4">Friday</option>
+          <option value="5">Saturday</option><option value="6">Sunday</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ORDER VALUE (₹)</label>
+        <input class="form-input" id="riskValue" type="number" value="1500" min="100" max="10000">
+      </div>
+      <button class="calc-btn" onclick="calculateRisk()">Calculate Risk →</button>
+    </div>
+    <div class="risk-result" id="riskResult">
+      <div class="risk-meter">
+        <div class="risk-circle" id="riskCircle">-</div>
+        <div class="risk-info"><h3 id="riskTitle">-</h3><p id="riskDesc">-</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTS -->
+<div class="page fade-in" id="page-products">
+  <div class="section-header">
+    <div class="section-title">Product & Category Intelligence</div>
+    <div class="section-desc">Revenue breakdown by product category and inventory insights</div>
+  </div>
+  <div class="chart-grid chart-grid-2">
+    <div class="chart-card"><div class="chart-title">Category Revenue Breakdown</div><div class="chart-sub">TOTAL REVENUE PER CATEGORY</div><canvas id="categoryChart"></canvas></div>
+    <div class="chart-card"><div class="chart-title">Category Revenue Ranking</div><div class="chart-sub">HORIZONTAL BAR — LARGEST TO SMALLEST</div><canvas id="categoryBarChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="margin-top:20px">
+    <div class="chart-title">Category Performance Table</div>
+    <div class="chart-sub">REVENUE CONTRIBUTION WITH VISUAL BARS</div>
+    <table class="data-table" style="margin-top:10px">
+      <thead><tr><th>Category</th><th>Revenue</th><th>Share %</th><th>Visual</th></tr></thead>
+      <tbody id="categoryTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FEEDBACK -->
+<div class="page fade-in" id="page-feedback">
+  <div class="section-header">
+    <div class="section-title">Customer Feedback Intelligence</div>
+    <div class="section-desc">Sentiment analysis across 5,000 feedback records</div>
+  </div>
+  <div class="info-bar">
+    💡 <span>Feedback is nearly evenly split: <strong>32.4% Positive</strong>, <strong>32.8% Negative</strong>, <strong>34.8% Neutral</strong> — systemic quality issues across all 4 service areas.</span>
+  </div>
+  <div class="feedback-grid">
+    <div class="chart-card">
+      <div class="chart-title">Sentiment Distribution</div><div class="chart-sub">BREAKDOWN ACROSS 5,000 FEEDBACKS</div>
+      <canvas id="sentimentChart" style="margin-bottom:20px"></canvas>
+      <div id="sentimentBars"></div>
+    </div>
+    <div class="chart-card"><div class="chart-title">Feedback by Category</div><div class="chart-sub">WHICH AREA GETS MOST COMPLAINTS?</div><canvas id="feedbackCatChart"></canvas></div>
+    <div class="chart-card"><div class="chart-title">Star Rating Distribution</div><div class="chart-sub">AVG RATING: 3.34 / 5.0</div><div id="starRatings" style="margin-top:10px"></div></div>
+    <div class="chart-card"><div class="chart-title">Rating Distribution Pie</div><div class="chart-sub">OVERALL BREAKDOWN</div><canvas id="ratingPieChart"></canvas></div>
+  </div>
+</div>
+
+<!-- AI ASSISTANT (RAG + GROQ) -->
+<div class="page fade-in" id="page-ai">
+  <div class="section-header">
+    <div class="section-title">🤖 AI Business Assistant</div>
+    <div class="section-desc">Full RAG pipeline — TF-IDF retrieval → context augmentation → Groq LLaMA 3 generation</div>
+  </div>
+
+  <div class="chat-container">
+
+    <!-- RAG Pipeline Banner -->
+    <div class="rag-banner">
+      <strong>✅ RAG Pipeline Active</strong> — 3-step flow powering every answer:
+      <div class="rag-pipeline" style="margin-top:10px;gap:4px">
+        <div class="rag-step active-step">❓ Your Query</div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-step active-step">🔎 TF-IDF Retrieval<br><span style="color:var(--text3);font-size:10px">5,000 feedback docs</span></div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-step active-step">📋 Top-15 Chunks<br><span style="color:var(--text3);font-size:10px">cosine similarity</span></div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-step active-step">📝 Augmented Prompt<br><span style="color:var(--text3);font-size:10px">chunks + KPI context</span></div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-step active-step">🤖 Groq LLaMA 3<br><span style="color:var(--text3);font-size:10px">llama-3.3-70b-versatile</span></div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-step active-step">✅ Root-Cause Analysis</div>
+      </div>
+    </div>
+
+    <!-- Groq API Key Input -->
+    <div class="groq-key-row">
+      <span style="font-size:12px;color:var(--text2);font-family:'Space Mono',monospace;white-space:nowrap">🔑 GROQ API KEY</span>
+      <input class="groq-key-input" id="groqKeyInput" type="password" placeholder="Enter Groq API key — free at console.groq.com">
+      <button class="groq-key-btn" onclick="saveGroqKey()">Save Key</button>
+      <span id="keyStatus" style="font-size:11px;font-family:'Space Mono',monospace;color:var(--text3)">Not set</span>
+    </div>
+
+    <!-- Quick Prompts -->
+    <div class="suggestions">
+      <button class="sugg-btn" onclick="askSuggestion(this)">Why is ROAS so low?</button>
+      <button class="sugg-btn" onclick="askSuggestion(this)">Why are customers giving negative feedback?</button>
+      <button class="sugg-btn" onclick="askSuggestion(this)">What product quality issues are reported?</button>
+      <button class="sugg-btn" onclick="askSuggestion(this)">What's causing delivery delays?</button>
+      <button class="sugg-btn" onclick="askSuggestion(this)">Which channel should we invest more in?</button>
+      <button class="sugg-btn" onclick="askSuggestion(this)">How can we improve customer retention?</button>
+    </div>
+
+    <!-- Chat Box -->
+    <div class="chat-box" id="chatBox">
+      <div class="chat-msg">
+        <div class="msg-avatar avatar-ai">🤖</div>
+        <div class="msg-bubble">
+          Hello! I'm your Blinkit RAG-powered Business Intelligence Assistant.<br><br>
+          Every answer I give goes through a 3-step pipeline:
+          <strong>① TF-IDF retrieval</strong> of the top-15 most relevant customer feedbacks →
+          <strong>② context augmentation</strong> with your real KPIs →
+          <strong>③ Groq LLaMA 3</strong> root-cause analysis grounded in actual evidence.<br><br>
+          Enter your Groq API key above, then ask me anything!
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" type="text"
+        placeholder="e.g. Why are Dairy & Breakfast products getting bad reviews?"
+        onkeydown="if(event.key==='Enter') sendChat()">
+      <button class="chat-send" id="chatSendBtn" onclick="sendChat()">Ask AI →</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════
+const DATA = {"kpis":{"total_revenue":11009308.0,"total_spend":16319838.0,"overall_roas":0.67,"total_orders":5000,"avg_order":2201.86,"on_time_rate":69.4,"avg_rating":3.34,"total_customers":2500},"daily":[{"date":"2024-10-07","total_revenue":16339.0,"total_spend":26778.19,"total_orders":7.0,"roas":0.61,"on_time_pct":71.4},{"date":"2024-10-08","total_revenue":15328.47,"total_spend":26545.48,"total_orders":6.0,"roas":0.58,"on_time_pct":50.0},{"date":"2024-10-09","total_revenue":11812.83,"total_spend":23840.12,"total_orders":5.0,"roas":0.5,"on_time_pct":40.0},{"date":"2024-10-10","total_revenue":29800.41,"total_spend":31592.61,"total_orders":10.0,"roas":0.94,"on_time_pct":50.0},{"date":"2024-10-11","total_revenue":13910.3,"total_spend":37052.82,"total_orders":7.0,"roas":0.38,"on_time_pct":85.7},{"date":"2024-10-12","total_revenue":8761.38,"total_spend":27686.4,"total_orders":4.0,"roas":0.32,"on_time_pct":25.0},{"date":"2024-10-13","total_revenue":23464.26,"total_spend":25985.07,"total_orders":13.0,"roas":0.9,"on_time_pct":69.2},{"date":"2024-10-14","total_revenue":7654.59,"total_spend":25273.95,"total_orders":6.0,"roas":0.3,"on_time_pct":100.0},{"date":"2024-10-15","total_revenue":23262.49,"total_spend":30299.53,"total_orders":12.0,"roas":0.77,"on_time_pct":75.0},{"date":"2024-10-16","total_revenue":30525.17,"total_spend":25989.24,"total_orders":10.0,"roas":1.17,"on_time_pct":60.0},{"date":"2024-10-17","total_revenue":19938.54,"total_spend":23955.66,"total_orders":10.0,"roas":0.83,"on_time_pct":50.0},{"date":"2024-10-18","total_revenue":9155.29,"total_spend":22624.26,"total_orders":4.0,"roas":0.4,"on_time_pct":100.0},{"date":"2024-10-19","total_revenue":22008.15,"total_spend":29056.31,"total_orders":9.0,"roas":0.76,"on_time_pct":66.7},{"date":"2024-10-20","total_revenue":5231.31,"total_spend":23590.07,"total_orders":4.0,"roas":0.22,"on_time_pct":75.0},{"date":"2024-10-21","total_revenue":28930.83,"total_spend":23790.55,"total_orders":14.0,"roas":1.22,"on_time_pct":42.9},{"date":"2024-10-22","total_revenue":11293.69,"total_spend":27451.73,"total_orders":6.0,"roas":0.41,"on_time_pct":66.7},{"date":"2024-10-23","total_revenue":10314.59,"total_spend":26064.68,"total_orders":5.0,"roas":0.4,"on_time_pct":40.0},{"date":"2024-10-24","total_revenue":30592.85,"total_spend":27162.13,"total_orders":13.0,"roas":1.13,"on_time_pct":61.5},{"date":"2024-10-25","total_revenue":22477.7,"total_spend":27239.32,"total_orders":9.0,"roas":0.83,"on_time_pct":77.8},{"date":"2024-10-26","total_revenue":23652.49,"total_spend":30715.19,"total_orders":11.0,"roas":0.77,"on_time_pct":72.7},{"date":"2024-10-27","total_revenue":11797.07,"total_spend":28929.31,"total_orders":5.0,"roas":0.41,"on_time_pct":80.0},{"date":"2024-10-28","total_revenue":17221.29,"total_spend":25260.54,"total_orders":8.0,"roas":0.68,"on_time_pct":50.0},{"date":"2024-10-29","total_revenue":11223.88,"total_spend":21373.32,"total_orders":7.0,"roas":0.53,"on_time_pct":57.1},{"date":"2024-10-30","total_revenue":23835.14,"total_spend":22826.59,"total_orders":13.0,"roas":1.04,"on_time_pct":69.2},{"date":"2024-10-31","total_revenue":25689.95,"total_spend":23216.41,"total_orders":8.0,"roas":1.11,"on_time_pct":62.5},{"date":"2024-11-01","total_revenue":14781.03,"total_spend":27251.15,"total_orders":9.0,"roas":0.54,"on_time_pct":55.6},{"date":"2024-11-02","total_revenue":10794.55,"total_spend":25426.16,"total_orders":5.0,"roas":0.42,"on_time_pct":60.0},{"date":"2024-11-03","total_revenue":28761.95,"total_spend":29445.68,"total_orders":12.0,"roas":0.98,"on_time_pct":75.0},{"date":"2024-11-04","total_revenue":13820.12,"total_spend":24065.03,"total_orders":4.0,"roas":0.57,"on_time_pct":75.0},{"date":"2024-11-05","total_revenue":0.0,"total_spend":29540.26,"total_orders":0.0,"roas":0.0,"on_time_pct":0.0}],"channels":[{"channel":"App","spend":4213378.75,"rev":8075010.49,"impressions":7563662,"conversions":75192,"roas":1.92,"ctr":0.99},{"channel":"Email","spend":3997488.04,"rev":8189331.58,"impressions":7275694,"conversions":74671,"roas":2.05,"ctr":1.03},{"channel":"SMS","spend":3998607.54,"rev":7938649.32,"impressions":7367010,"conversions":73235,"roas":1.99,"ctr":0.99},{"channel":"Social Media","spend":4110363.91,"rev":7990415.98,"impressions":7281244,"conversions":74940,"roas":1.94,"ctr":1.03}],"campaigns":[{"campaign_name":"Referral Program","spend":1818025.51,"rev":3691382.6,"roas":2.03},{"campaign_name":"App Push Notification","spend":1788989.2,"rev":3554370.0,"roas":1.99},{"campaign_name":"Email Campaign","spend":1810729.67,"rev":3601785.22,"roas":1.99},{"campaign_name":"Weekend Special","spend":1799611.29,"rev":3571451.83,"roas":1.98},{"campaign_name":"New User Discount","spend":1833454.81,"rev":3603860.17,"roas":1.97},{"campaign_name":"Membership Drive","spend":1790069.8,"rev":3524951.25,"roas":1.97},{"campaign_name":"Festival Offer","spend":1796687.14,"rev":3507063.91,"roas":1.95},{"campaign_name":"Flash Sale","spend":1831687.82,"rev":3556087.02,"roas":1.94},{"campaign_name":"Category Promotion","spend":1850583.0,"rev":3582455.37,"roas":1.94}],"categories":[{"category":"Dairy & Breakfast","revenue":639222.19},{"category":"Pharmacy","revenue":592368.57},{"category":"Fruits & Vegetables","revenue":559053.08},{"category":"Pet Care","revenue":539888.75},{"category":"Household Care","revenue":444244.25},{"category":"Personal Care","revenue":394894.61},{"category":"Snacks & Munchies","revenue":394648.71},{"category":"Cold Drinks & Juices","revenue":392717.62},{"category":"Grocery & Staples","revenue":359937.82},{"category":"Baby Care","revenue":348227.18},{"category":"Instant & Frozen Food","revenue":307212.65}],"sentiment":[{"sentiment":"Neutral","count":1738},{"sentiment":"Negative","count":1642},{"sentiment":"Positive","count":1620}],"feedback_cat":[{"feedback_category":"Delivery","count":1271},{"feedback_category":"Customer Service","count":1266},{"feedback_category":"Product Quality","count":1250},{"feedback_category":"App Experience","count":1213}],"feedback_rating":[{"rating":1,"count":540},{"rating":2,"count":538},{"rating":3,"count":1398},{"rating":4,"count":1708},{"rating":5,"count":816}],"delay_hour":[{"hour":0,"delay_pct":31.2},{"hour":1,"delay_pct":29.7},{"hour":2,"delay_pct":31.5},{"hour":3,"delay_pct":31.7},{"hour":4,"delay_pct":33.5},{"hour":5,"delay_pct":30.1},{"hour":6,"delay_pct":30.9},{"hour":7,"delay_pct":31.8},{"hour":8,"delay_pct":27.9},{"hour":9,"delay_pct":29.3},{"hour":10,"delay_pct":28.6},{"hour":11,"delay_pct":37.0},{"hour":12,"delay_pct":30.6},{"hour":13,"delay_pct":36.8},{"hour":14,"delay_pct":26.9},{"hour":15,"delay_pct":33.3},{"hour":16,"delay_pct":27.4},{"hour":17,"delay_pct":27.5},{"hour":18,"delay_pct":31.4},{"hour":19,"delay_pct":31.6},{"hour":20,"delay_pct":28.2},{"hour":21,"delay_pct":26.7},{"hour":22,"delay_pct":37.4},{"hour":23,"delay_pct":23.5}],"customer_segments":[{"customer_segment":"Regular","count":639},{"customer_segment":"Premium","count":633},{"customer_segment":"New","count":628},{"customer_segment":"Inactive","count":600}],"monthly":[{"month":"2023-03","revenue":272878.96,"spend":411333.31,"orders":120.0},{"month":"2023-04","revenue":554344.77,"spend":830706.7,"orders":238.0},{"month":"2023-05","revenue":608213.54,"spend":859887.38,"orders":276.0},{"month":"2023-06","revenue":505227.66,"spend":809060.55,"orders":232.0},{"month":"2023-07","revenue":567639.91,"spend":847800.6,"orders":244.0},{"month":"2023-08","revenue":623472.35,"spend":823819.51,"orders":285.0},{"month":"2023-09","revenue":571117.81,"spend":840577.36,"orders":262.0},{"month":"2023-10","revenue":578369.83,"spend":853054.72,"orders":254.0},{"month":"2023-11","revenue":567783.74,"spend":787118.65,"orders":265.0},{"month":"2023-12","revenue":615709.03,"spend":821852.4,"orders":268.0},{"month":"2024-01","revenue":560423.56,"spend":831013.03,"orders":270.0},{"month":"2024-02","revenue":545090.11,"spend":768588.32,"orders":252.0},{"month":"2024-03","revenue":543181.85,"spend":882881.94,"orders":251.0},{"month":"2024-04","revenue":538754.75,"spend":811449.8,"orders":241.0},{"month":"2024-05","revenue":574163.61,"spend":854702.6,"orders":263.0},{"month":"2024-06","revenue":539074.85,"spend":803233.34,"orders":248.0},{"month":"2024-07","revenue":573111.98,"spend":878179.48,"orders":256.0},{"month":"2024-08","revenue":546194.57,"spend":813535.04,"orders":251.0},{"month":"2024-09","revenue":518695.03,"spend":834408.68,"orders":247.0},{"month":"2024-10","revenue":537702.94,"spend":820906.55,"orders":247.0},{"month":"2024-11","revenue":68157.65,"spend":135728.28,"orders":30.0}]};
+
+// ═══════════════════════════════════════════════════════════
+// CHART DEFAULTS
+// ═══════════════════════════════════════════════════════════
+Chart.defaults.color = '#8a93a8';
+Chart.defaults.borderColor = '#2a3040';
+Chart.defaults.font.family = "'Space Mono', monospace";
+Chart.defaults.font.size = 11;
+const chartInstances = {};
+function makeChart(id, config) {
+  if (chartInstances[id]) chartInstances[id].destroy();
+  chartInstances[id] = new Chart(document.getElementById(id), config);
+}
+const fmtK = v => '₹'+(v/1000).toFixed(0)+'K';
+const fmtL = v => v>=1e5?'₹'+(v/1e5).toFixed(1)+'L':v>=1e3?'₹'+(v/1e3).toFixed(0)+'K':'₹'+v.toFixed(0);
+
+// ═══════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════
+function initOverview() {
+  const months = DATA.monthly.slice(0,-1);
+  makeChart('monthlyChart', {
+    type:'bar',
+    data:{ labels:months.map(m=>m.month.replace('20','')),
+      datasets:[
+        {label:'Ad Spend',data:months.map(m=>m.spend),backgroundColor:'rgba(255,82,82,0.6)',borderColor:'#ff5252',borderWidth:1,yAxisID:'y1'},
+        {label:'Revenue',data:months.map(m=>m.revenue),type:'line',borderColor:'#00e676',backgroundColor:'rgba(0,230,118,0.1)',borderWidth:2,pointRadius:3,fill:true,tension:0.4,yAxisID:'y'}
+      ]},
+    options:{responsive:true,interaction:{mode:'index'},scales:{
+      y:{position:'left',ticks:{callback:fmtK}},
+      y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:fmtK}}
+    }}
+  });
+  makeChart('segmentChart', {
+    type:'doughnut',
+    data:{labels:DATA.customer_segments.map(s=>s.customer_segment),
+      datasets:[{data:DATA.customer_segments.map(s=>s.count),backgroundColor:['#00e676','#40c4ff','#ffd600','#ff5252'],borderWidth:2,borderColor:'#1a1f29'}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'60%'}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// MARKETING
+// ═══════════════════════════════════════════════════════════
+function initMarketing(d) {
+  d = d || getFilteredDaily();
+  // update KPI cards
+  const rev   = d.reduce((s,x)=>s+x.total_revenue,0);
+  const spend = d.reduce((s,x)=>s+x.total_spend,0);
+  const roas  = spend>0?(rev/spend).toFixed(2):0;
+  const prof  = d.filter(x=>x.roas>=2.0).length;
+  document.getElementById('mkt-roas').textContent = roas+'x';
+  document.getElementById('mkt-rev').textContent  = fmtL(rev);
+  document.getElementById('mkt-prof').textContent = prof+' days';
+
+  makeChart('roasChart', {
+    type:'bar',
+    data:{labels:d.map(x=>x.date.slice(5)),
+      datasets:[
+        {label:'Ad Spend',data:d.map(x=>x.total_spend),backgroundColor:'rgba(255,82,82,0.5)',borderColor:'#ff5252',borderWidth:1,yAxisID:'y1'},
+        {label:'Revenue',data:d.map(x=>x.total_revenue),type:'line',borderColor:'#00e676',backgroundColor:'rgba(0,230,118,0.07)',borderWidth:2.5,pointRadius:2,fill:true,tension:0.4,yAxisID:'y'}
+      ]},
+    options:{responsive:true,interaction:{mode:'index'},scales:{
+      y:{position:'left',ticks:{callback:fmtK}},
+      y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:fmtK}},
+      x:{ticks:{maxTicksLimit:10}}
+    }}
+  });
+  makeChart('channelChart', {
+    type:'bar',
+    data:{labels:DATA.channels.map(c=>c.channel),
+      datasets:[{label:'ROAS',data:DATA.channels.map(c=>c.roas),
+        backgroundColor:DATA.channels.map(c=>c.roas>=2?'rgba(0,230,118,0.7)':'rgba(255,214,0,0.7)'),
+        borderColor:DATA.channels.map(c=>c.roas>=2?'#00e676':'#ffd600'),borderWidth:1.5}]},
+    options:{responsive:true,scales:{y:{beginAtZero:true,max:2.5,ticks:{callback:v=>v+'x'}}}}
+  });
+  const tbody = document.getElementById('campaignTable');
+  tbody.innerHTML='';
+  const maxRev = Math.max(...DATA.campaigns.map(c=>c.rev));
+  DATA.campaigns.forEach(c=>{
+    const ok=c.roas>=2.0, pct=Math.round(c.rev/maxRev*100);
+    tbody.innerHTML+=`<tr>
+      <td style="font-weight:600">${c.campaign_name}</td>
+      <td>₹${(c.spend/100000).toFixed(1)}L</td>
+      <td>₹${(c.rev/100000).toFixed(1)}L</td>
+      <td style="color:${ok?'var(--green)':'var(--yellow)'};font-family:'Space Mono',monospace;font-weight:700">${c.roas}x</td>
+      <td><div style="width:${pct}%;height:8px;background:${ok?'var(--green)':'var(--yellow)'};border-radius:4px;min-width:10px"></div></td>
+      <td><span class="kpi-badge ${ok?'badge-green':'badge-yellow'}">${ok?'✓ PROFITABLE':'⚠ BELOW TARGET'}</span></td>
+    </tr>`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// DATE FILTER
+// ═══════════════════════════════════════════════════════════
+function getFilteredDaily() {
+  const from = document.getElementById('dateFrom')?.value||'2023-03-16';
+  const to   = document.getElementById('dateTo')?.value  ||'2024-11-04';
+  return DATA.daily.filter(d=>d.date>=from&&d.date<=to);
+}
+function setDateRange(days) {
+  const all = DATA.daily.map(d=>d.date).sort();
+  const max = all[all.length-1];
+  const from = days===999?all[0]:new Date(new Date(max)-days*86400000).toISOString().slice(0,10);
+  document.getElementById('dateFrom').value=from;
+  document.getElementById('dateTo').value=max;
+  filterByDate();
+}
+function filterByDate() {
+  initMarketing(getFilteredDaily());
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPERATIONS
+// ═══════════════════════════════════════════════════════════
+function initOperations() {
+  const hd=DATA.delay_hour;
+  makeChart('delayHourChart',{
+    type:'bar',
+    data:{labels:hd.map(h=>h.hour+':00'),
+      datasets:[{label:'Delay %',data:hd.map(h=>h.delay_pct),
+        backgroundColor:hd.map(h=>h.delay_pct>35?'rgba(255,82,82,0.75)':h.delay_pct>32?'rgba(255,214,0,0.65)':'rgba(64,196,255,0.5)'),
+        borderWidth:0}]},
+    options:{responsive:true,scales:{y:{ticks:{callback:v=>v+'%'},min:0,max:45}}}
+  });
+  makeChart('deliveryPieChart',{
+    type:'doughnut',
+    data:{labels:['On Time (69.4%)','Slightly Delayed (20.7%)','Significantly Delayed (9.9%)'],
+      datasets:[{data:[3470,1037,493],backgroundColor:['rgba(0,230,118,0.75)','rgba(255,214,0,0.75)','rgba(255,82,82,0.75)'],borderWidth:2,borderColor:'#1a1f29'}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'55%'}
+  });
+}
+
+function calculateRisk() {
+  const hour=parseInt(document.getElementById('riskHour').value);
+  const day=parseInt(document.getElementById('riskDay').value);
+  const value=parseFloat(document.getElementById('riskValue').value);
+  const hd=DATA.delay_hour.find(h=>h.hour===hour);
+  let risk=hd?hd.delay_pct:30.6;
+  if(day===4||day===5) risk+=4;
+  if(day===6) risk+=2;
+  if(value>3000) risk+=3;
+  if(hour>=11&&hour<=14) risk+=4;
+  if(hour>=18&&hour<=21) risk+=3;
+  risk=Math.min(Math.round(risk),95);
+  document.getElementById('riskResult').style.display='block';
+  const circle=document.getElementById('riskCircle');
+  const title=document.getElementById('riskTitle');
+  const desc=document.getElementById('riskDesc');
+  circle.textContent=risk+'%';
+  if(risk<30){ circle.className='risk-circle risk-low'; title.textContent='✅ Low Delay Risk'; desc.textContent=`${risk}% delay chance — good time slot for dispatch.`; }
+  else if(risk<38){ circle.className='risk-circle risk-med'; title.textContent='⚠️ Medium Delay Risk'; desc.textContent=`${risk}% delay risk — send a proactive customer notification.`; }
+  else{ circle.className='risk-circle risk-high'; title.textContent='🔴 High Delay Risk'; desc.textContent=`${risk}% delay risk — allocate extra delivery partners and alert customer now.`; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRODUCTS
+// ═══════════════════════════════════════════════════════════
+function initProducts() {
+  const cats=DATA.categories;
+  const colors=['#00e676','#40c4ff','#ffd600','#d500f9','#ff9100','#69f0ae','#ff5252','#b2ff59','#ea80fc','#84ffff','#ccff90'];
+  makeChart('categoryChart',{type:'pie',
+    data:{labels:cats.map(c=>c.category),datasets:[{data:cats.map(c=>c.revenue),backgroundColor:colors.map(c=>c+'bb'),borderColor:colors,borderWidth:1.5}]},
+    options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}}}}
+  });
+  makeChart('categoryBarChart',{type:'bar',
+    data:{labels:[...cats].reverse().map(c=>c.category),datasets:[{label:'Revenue',data:[...cats].reverse().map(c=>c.revenue),backgroundColor:colors.slice().reverse().map(c=>c+'99'),borderColor:colors.slice().reverse(),borderWidth:1}]},
+    options:{indexAxis:'y',responsive:true,scales:{x:{ticks:{callback:v=>fmtK(v)}}}}
+  });
+  const total=cats.reduce((s,c)=>s+c.revenue,0);
+  const tbody=document.getElementById('categoryTable'); tbody.innerHTML='';
+  cats.forEach((c,i)=>{
+    const pct=(c.revenue/total*100).toFixed(1);
+    tbody.innerHTML+=`<tr>
+      <td style="font-weight:600">${c.category}</td>
+      <td style="font-family:'Space Mono',monospace">₹${(c.revenue/1000).toFixed(1)}K</td>
+      <td style="font-family:'Space Mono',monospace">${pct}%</td>
+      <td><div style="width:${pct}%;height:8px;background:${colors[i]}99;border:1px solid ${colors[i]};border-radius:4px;min-width:4px"></div></td>
+    </tr>`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// FEEDBACK
+// ═══════════════════════════════════════════════════════════
+function initFeedback() {
+  const total=DATA.sentiment.reduce((s,x)=>s+x.count,0);
+  const sentColors={Positive:'#00e676',Neutral:'#40c4ff',Negative:'#ff5252'};
+  makeChart('sentimentChart',{type:'doughnut',
+    data:{labels:DATA.sentiment.map(s=>s.sentiment),
+      datasets:[{data:DATA.sentiment.map(s=>s.count),backgroundColor:DATA.sentiment.map(s=>sentColors[s.sentiment]+'bb'),borderColor:DATA.sentiment.map(s=>sentColors[s.sentiment]),borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'60%'}
+  });
+  const barsDiv=document.getElementById('sentimentBars'); barsDiv.innerHTML='';
+  DATA.sentiment.forEach(s=>{
+    const pct=(s.count/total*100).toFixed(1);
+    barsDiv.innerHTML+=`<div class="sent-row">
+      <div class="sent-label" style="color:${sentColors[s.sentiment]}">${s.sentiment}</div>
+      <div class="sent-bar-bg"><div class="sent-bar-fill" style="width:${pct}%;background:${sentColors[s.sentiment]}"></div></div>
+      <div class="sent-pct">${pct}%</div>
+    </div>`;
+  });
+  makeChart('feedbackCatChart',{type:'bar',
+    data:{labels:DATA.feedback_cat.map(f=>f.feedback_category),datasets:[{label:'Count',data:DATA.feedback_cat.map(f=>f.count),backgroundColor:['rgba(255,82,82,0.7)','rgba(255,214,0,0.7)','rgba(64,196,255,0.7)','rgba(213,0,249,0.7)'],borderWidth:0}]},
+    options:{responsive:true,scales:{y:{beginAtZero:true}}}
+  });
+  const maxCount=Math.max(...DATA.feedback_rating.map(r=>r.count));
+  const starDiv=document.getElementById('starRatings'); starDiv.innerHTML='';
+  DATA.feedback_rating.forEach(r=>{
+    const pct=(r.count/maxCount*100).toFixed(0);
+    starDiv.innerHTML+=`<div class="star-row">
+      <span style="font-family:'Space Mono',monospace;font-size:12px;width:15px;color:var(--text2)">${r.rating}</span>
+      <span style="color:var(--yellow);font-size:13px">⭐</span>
+      <div class="star-bar-bg"><div class="star-bar-fill" style="width:${pct}%"></div></div>
+      <span class="star-count">${r.count.toLocaleString()}</span>
+    </div>`;
+  });
+  makeChart('ratingPieChart',{type:'doughnut',
+    data:{labels:DATA.feedback_rating.map(r=>r.rating+' Star'),datasets:[{data:DATA.feedback_rating.map(r=>r.count),backgroundColor:['#ff5252bb','#ff9100bb','#ffd600bb','#00e676bb','#40c4ffbb'],borderWidth:2,borderColor:'#1a1f29'}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12}}},cutout:'55%'}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RAG + GROQ AI ASSISTANT
+// ═══════════════════════════════════════════════════════════
+let groqApiKey   = '';
+let chatHistory  = [];   // multi-turn memory
+let typingCounter= 0;
+
+// ── Groq key management ──────────────────────────────────
+function saveGroqKey() {
+  const val = document.getElementById('groqKeyInput').value.trim();
+  if (!val) { alert('Please enter a Groq API key.'); return; }
+  groqApiKey = val;
+  document.getElementById('keyStatus').textContent = '✅ Key saved';
+  document.getElementById('keyStatus').style.color = 'var(--green)';
+}
+
+// ── Step 1: TF-IDF-style keyword retrieval (client-side) ─
+// Mirrors the Python TF-IDF index for the HTML demo.
+// Real full retrieval over raw text runs in rag_pipeline.py (Streamlit).
+function retrieveRelevantContext(query) {
+  const q = query.toLowerCase();
+
+  // Keyword → feedback category map
+  const rules = [
+    { keys:['delivery','late','delay','slow','driver','rider','time'], cat:'Delivery' },
+    { keys:['quality','damage','rotten','broken','expired','fresh','bad','product'], cat:'Product Quality' },
+    { keys:['app','crash','slow','loading','bug','error','ui','interface','notification'], cat:'App Experience' },
+    { keys:['service','support','rude','agent','refund','response','help','customer'], cat:'Customer Service' },
+  ];
+
+  const matched = [];
+  rules.forEach(rule => {
+    if (rule.keys.some(k => q.includes(k))) {
+      const cat = DATA.feedback_cat.find(f => f.feedback_category === rule.cat);
+      if (cat && !matched.find(m => m.feedback_category === cat.feedback_category)) matched.push(cat);
+    }
+  });
+
+  // If no keyword match, return all categories
+  const target = matched.length ? matched : DATA.feedback_cat;
+  const neg    = DATA.sentiment.find(s => s.sentiment === 'Negative');
+  const pos    = DATA.sentiment.find(s => s.sentiment === 'Positive');
+
+  const chunks = target.map(c =>
+    `• [${c.feedback_category}] — ${c.count} feedback records in dataset`
+  ).join('\n');
+
+  return `RETRIEVED FEEDBACK EVIDENCE (TF-IDF keyword match — top ${target.length} category chunks):
+${chunks}
+• Negative sentiment total: ${neg?.count||1642} records (32.8% of all feedback)
+• Positive sentiment total: ${pos?.count||1620} records (32.4% of all feedback)
+• Avg customer rating: ${DATA.kpis.avg_rating}/5.0`;
+}
+
+// ── Step 2: Build augmented prompt ───────────────────────
+function buildAugmentedPrompt(query) {
+  const retrieved = retrieveRelevantContext(query);
+  return `You are an expert Business Intelligence Analyst for Blinkit, a quick-commerce platform.
+
+━━━ BUSINESS KPI CONTEXT (real dataset) ━━━
+• Total Revenue:   ₹1.10 Crore | Ad Spend: ₹1.63 Crore | Overall ROAS: 0.67x (⚠️ below 2.0x target)
+• Best Channel:    Email 2.05x ROAS (only profitable) | SMS 1.99x | Social 1.94x | App 1.92x
+• Best Campaign:   Referral Program 2.03x
+• On-Time Rate:    69.4% | Total Delayed: 1,530 (30.6%) | Peak delay: 11AM (37%), 1PM (36.8%), 10PM (37.4%)
+• Top Category:    Dairy & Breakfast ₹6.39L | Pharmacy ₹5.92L | Fruits & Veg ₹5.59L
+• Customers:       2,500 total — 25% Regular, 25% Premium, 25% New, 24% Inactive (churn risk)
+• Avg Rating:      3.34/5.0 | 32.8% Negative, 34.8% Neutral, 32.4% Positive feedback
+
+━━━ ${retrieved} ━━━
+
+Answer the business question with this exact structure:
+1. 🔍 Direct Answer — cite retrieved feedback category counts as evidence
+2. 🧠 Root Cause Analysis — explain the underlying business reason
+3. 📊 Data Evidence — reference specific KPI numbers from the context above
+4. ✅ Actionable Recommendations — 3 to 5 specific, prioritized steps management can take immediately
+
+Be concise, factual, and business-focused.`;
+}
+
+// ── Step 3: Call Groq LLaMA 3 ────────────────────────────
+async function callGroqLLaMA(systemPrompt, userMessage) {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${groqApiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1024,
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...chatHistory,
+        { role: 'user',   content: userMessage }
+      ]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.choices[0].message.content;
+}
+
+// ── Full RAG send ─────────────────────────────────────────
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  if (!groqApiKey) {
+    alert('Please enter your Groq API key first (free at console.groq.com).');
+    return;
+  }
+
+  addMessage(msg, 'user');
+  input.value = '';
+  document.getElementById('chatSendBtn').disabled = true;
+
+  // Show step indicators while processing
+  const typingId = addTyping('🔎 Step 1 — Retrieving relevant feedback...');
+
+  // Step 1 — Retrieval (instant, client-side TF-IDF simulation)
+  const retrieved = retrieveRelevantContext(msg);
+
+  // Update typing to show step 2+3
+  updateTyping(typingId, '🤖 Step 2+3 — Augmenting prompt & calling Groq LLaMA 3...');
+
+  // Step 2 — Augmentation
+  const systemPrompt = buildAugmentedPrompt(msg);
+
+  try {
+    // Step 3 — Generation
+    const answer = await callGroqLLaMA(systemPrompt, msg);
+
+    removeTyping(typingId);
+
+    // Save to multi-turn history
+    chatHistory.push({ role:'user',      content: msg });
+    chatHistory.push({ role:'assistant', content: answer });
+
+    // Show answer + which feedback categories were retrieved
+    addMessage(answer, 'ai', retrieved);
+  } catch(e) {
+    removeTyping(typingId);
+    addMessage(`❌ Groq API error: ${e.message}\n\nCheck your API key or try again.`, 'ai');
+  }
+  document.getElementById('chatSendBtn').disabled = false;
+}
+
+// ── Chat UI helpers ───────────────────────────────────────
+function addMessage(text, role, retrievedCtx='') {
+  const box = document.getElementById('chatBox');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role==='user'?'user':''}`;
+
+  let retrievedHTML = '';
+  if (role==='ai' && retrievedCtx) {
+    // parse retrieved categories for visual chips
+    const chips = DATA.feedback_cat
+      .filter(f => retrievedCtx.includes(f.feedback_category))
+      .map(f => {
+        const color = f.feedback_category==='Delivery'?'var(--red)':
+                      f.feedback_category==='Product Quality'?'var(--orange)':
+                      f.feedback_category==='App Experience'?'var(--blue)':'var(--purple)';
+        return `<span class="retrieved-chip" style="background:${color}22;border:1px solid ${color};color:${color}">${f.feedback_category} (${f.count})</span>`;
+      }).join('');
+
+    retrievedHTML = `<div class="retrieved-box">
+      <div class="retrieved-title">📋 RETRIEVED FEEDBACK CHUNKS (RAG Evidence)</div>
+      ${chips}
+    </div>`;
+  }
+
+  div.innerHTML = `
+    <div class="msg-avatar ${role==='ai'?'avatar-ai':'avatar-user'}">${role==='ai'?'🤖':'👤'}</div>
+    <div class="msg-bubble">
+      ${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}
+      ${retrievedHTML}
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function addTyping(label='') {
+  const id = ++typingCounter;
+  const box = document.getElementById('chatBox');
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.id = 'typing-'+id;
+  div.innerHTML = `<div class="msg-avatar avatar-ai">🤖</div>
+    <div class="msg-bubble">
+      <div class="typing"><span></span><span></span><span></span></div>
+      ${label?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:'Space Mono',monospace">${label}</div>`:''}
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return id;
+}
+function updateTyping(id, label) {
+  const el = document.getElementById('typing-'+id);
+  if (el) {
+    const lbl = el.querySelector('div:last-child');
+    if (lbl && lbl !== el.querySelector('.typing')) lbl.textContent = label;
+  }
+}
+function removeTyping(id) {
+  const el = document.getElementById('typing-'+id);
+  if (el) el.remove();
+}
+function askSuggestion(btn) {
+  document.getElementById('chatInput').value = btn.textContent;
+  sendChat();
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelector(`[data-page="${name}"]`).classList.add('active');
+  if(name==='overview')   initOverview();
+  if(name==='marketing')  initMarketing();
+  if(name==='operations') initOperations();
+  if(name==='products')   initProducts();
+  if(name==='feedback')   initFeedback();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+document.getElementById('headerDate').textContent =
+  new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+initOverview();
+initMarketing();   // pre-populate marketing KPI cards
+</script>
+</body>
+</html>
